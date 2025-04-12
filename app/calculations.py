@@ -535,18 +535,36 @@ def count_mp(
     low_count = 0
     high_count = 0
 
-    # Iterate through each row in the DataFrame
-    for _, row in camera_dataframe.iterrows():
+    def find_mp(row):
         if row["verkada_model"] is not None:
             # Find the corresponding camera model in the list
             if camera_model := find_verkada_camera(
                 str(row["verkada_model"]), verkada_camera_list
             ):
-                # Assuming camera_model has an attribute 'mp' for megapixels
-                if camera_model.mp <= 5:
-                    low_count += int(row["count"])
-                else:
-                    high_count += int(row["count"])
+                return camera_model.mp
+        return 0
+
+    def find_channels(row):
+        if row["verkada_model"] is not None:
+            # Find the corresponding camera model in the list
+            if camera_model := find_verkada_camera(
+                str(row["verkada_model"]), verkada_camera_list
+            ):
+                return max(1, camera_model.channels)
+        return 1
+
+    # attach mp and channel info to cams
+    camera_dataframe["mp"] = camera_dataframe.apply(find_mp, axis=1)
+    camera_dataframe["channels"] = camera_dataframe.apply(find_channels, axis=1)
+    
+    # Iterate through each row in the DataFrame
+    for _, row in camera_dataframe.iterrows():
+        if row["verkada_model"] is not None:
+            # Assuming camera_model has an attribute 'mp' for megapixels from above
+            if row["mp"] <= 5:
+                low_count += int(row["count"]) * row["channels"]
+            else:
+                high_count += int(row["count"]) * row["channels"]
 
     return [low_count, high_count]
 

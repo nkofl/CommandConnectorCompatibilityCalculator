@@ -183,6 +183,27 @@ def remove_keywords(
     return " ".join(filtered_words)
 
 
+def deduplicate_ips_macs(
+    sanitized_df: pd.DataFrame, patterns: dict
+) -> pd.DataFrame:
+    """Remove unwanted rows with duplicate ip's / macs. Check column heading and 75% of data values in column."""
+    print(sanitized_df.columns)
+    columns_to_deduplicate = [
+        col
+        for col in sanitized_df.columns
+        if any(
+            sanitized_df[col].str.match(patterns[pattern]).sum() >= 0.75 * sanitized_df.shape[0] and re.match(pattern, col, re.IGNORECASE)
+            for pattern in ["ip", "mac"]
+        )
+    ]
+    print("===============================================")
+    print(columns_to_deduplicate)
+    if len(columns_to_deduplicate) > 0:
+        sanitized_df = sanitized_df.drop_duplicates(
+            subset=columns_to_deduplicate
+        )
+    return sanitized_df
+
 def sanitize_columns(
     sanitized_df: pd.DataFrame, patterns: dict
 ) -> pd.DataFrame:
@@ -233,14 +254,18 @@ def remove_duplicates_from_row(row) -> pd.Series:
 
 
 def sanitize_customer_data(
-    customer_list: pd.DataFrame, dictionary: Set[str]
+    customer_list: pd.DataFrame, dictionary: Set[str], deduplicate=False
 ) -> pd.DataFrame:
     """Sanitize Customer List."""
     customer_list = prepare_customer_list(customer_list)
     english_words = extract_english_words()
     patterns = compile_regex_patterns()
 
-    sanitized_df = customer_list.applymap(
+    if deduplicate:
+        sanitized_df = deduplicate_ips_macs(customer_list, patterns)
+    else:
+        sanitized_df = customer_list
+    sanitized_df = sanitized_df.map(
         lambda x: remove_keywords(x, dictionary, english_words, patterns)
     )
     sanitized_df = sanitize_columns(sanitized_df, patterns)

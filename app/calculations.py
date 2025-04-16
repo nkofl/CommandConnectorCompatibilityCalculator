@@ -174,6 +174,7 @@ def get_camera_match(
     raw_customer_list: pd.DataFrame,
     verkada_cameras: List[CompatibleModel],
     model_column: Optional[Union[int, str]] = None,
+    deduplicate=False
 ) -> pd.DataFrame:
     """Match customer cameras against a list of known Verkada cameras.
 
@@ -240,6 +241,7 @@ def get_camera_match(
     customer_list = sanitize_customer_data(
         raw_customer_list,
         get_manufacturer_set(verkada_cameras),
+        deduplicate
     )
     if model_column is None:
         camera_column = identify_model_column_name(
